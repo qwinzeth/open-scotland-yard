@@ -11,6 +11,7 @@ public class Board{
 	private boolean consideringUndergroundMoves;
 	private boolean consideringFerryMoves;
 	private boolean investigatorsWon;
+	private boolean mrXWon;
 	private boolean doubleMoving;
 	private boolean isExtraMove;
 	public SYNode[] GetNodes(){return this.nodes;}
@@ -27,10 +28,11 @@ public class Board{
 		this.consideringUndergroundMoves=false;
 		this.consideringFerryMoves=false;
 		this.investigatorsWon=false;
+		this.mrXWon=false;
 		this.doubleMoving=false;
 		this.isExtraMove=false;
 		try{
-			BufferedReader fin=new BufferedReader(new InputStreamReader(Board.class.getResourceAsStream(netfilename)));
+			BufferedReader fin=new BufferedReader(new FileReader(netfilename));
 			int nodecount=Integer.parseInt(fin.readLine());
 			this.nodes=new SYNode[nodecount];
 			int spirals=4;
@@ -114,7 +116,8 @@ public class Board{
 	}
 	
 	public boolean MouseClicked(int x, int y, boolean aisimulated){
-		if(!this.Players[this.turnIndex].IsHuman()&&!aisimulated)
+		if(!this.Players[this.turnIndex].IsHuman()&&!aisimulated
+		||this.investigatorsWon||this.mrXWon)
 			return false;
 		int minY=GraphicalUserInterface.YBUFFER+115*this.turnIndex+35;
 		if(x>850&&x<900&&y>minY&&y<minY+20&&this.Players[this.turnIndex].Taxis>0){
@@ -177,17 +180,33 @@ public class Board{
 							}
 						}
 						removeHighlightFromAllNodes();
+						int totalInvestigatorMovesRemaining=0;
 						for(int wincheck=0;wincheck<this.Players.length-1;wincheck++){
 							if(this.Players[wincheck].NodeID==this.Players[this.Players.length-1].NodeID){
 								this.investigatorsWon=true;
+								return true;
+							}
+							if(this.playerCanMove(wincheck)){
+								totalInvestigatorMovesRemaining+=this.Players[wincheck].Taxis
+									+this.Players[wincheck].Buses
+									+this.Players[wincheck].Undergrounds;
 							}
 						}
-						if(this.doubleMoving){
+						if(totalInvestigatorMovesRemaining==0){
+							this.mrXWon=true;
+							return true;
+						}
+						if(this.doubleMoving&&playerCanMove(this.turnIndex)){
 							this.doubleMoving=false;
 							this.isExtraMove=true;
+							if(!this.Players[this.turnIndex].IsHuman()){
+								this.Players[this.turnIndex].AIMove(this,this.Players,this.nodes[this.Players[this.turnIndex].NodeID]);
+							}
 						}else{
 							this.isExtraMove=false;
-							this.turnIndex=(this.turnIndex+1)%this.Players.length;
+							do{
+								this.turnIndex=(this.turnIndex+1)%this.Players.length;
+							}while(!CurrentPlayerCanMove());
 							if(!this.Players[this.turnIndex].IsHuman()){
 								this.Players[this.turnIndex].AIMove(this,this.Players,this.nodes[this.Players[this.turnIndex].NodeID]);
 							}
@@ -207,6 +226,67 @@ public class Board{
 		for(int n=0;n<this.nodes.length;n++){
 			this.nodes[n].Highlighted=false;
 		}
+	}
+	
+	private boolean CurrentPlayerCanMove(){
+		return this.playerCanMove(this.turnIndex);
+	}
+	
+	private boolean playerCanMove(int pindex){
+		if(this.Players[pindex].IsMisterX()&&this.Players[this.Players.length-1].UsedAllMoves()){
+			return false;
+		}
+		SYNode[] reachables=this.nodes[this.Players[pindex].NodeID].GetTaxis();
+		for(int t=0;t<reachables.length&&this.Players[pindex].Taxis>0;t++){
+			if(!this.Players[pindex].IsMisterX()){
+				boolean takenByOtherInvestigator=false;
+				for(int p=0;p<this.Players.length&&!takenByOtherInvestigator;p++){
+					if(this.Players[p].IsMisterX())
+						continue;
+					if(this.Players[p].NodeID==reachables[t].GetID()){
+						takenByOtherInvestigator=true;
+					}
+				}
+				if(takenByOtherInvestigator)
+					continue;
+			}
+			return true;
+		}
+		
+		reachables=this.nodes[this.Players[pindex].NodeID].GetBuses();
+		for(int t=0;t<reachables.length&&this.Players[pindex].Buses>0;t++){
+			if(!this.Players[pindex].IsMisterX()){
+				boolean takenByOtherInvestigator=false;
+				for(int p=0;p<this.Players.length&&!takenByOtherInvestigator;p++){
+					if(this.Players[p].IsMisterX())
+						continue;
+					if(this.Players[p].NodeID==reachables[t].GetID()){
+						takenByOtherInvestigator=true;
+					}
+				}
+				if(takenByOtherInvestigator)
+					continue;
+			}
+			return true;
+		}
+		
+		reachables=this.nodes[this.Players[pindex].NodeID].GetUndergrounds();
+		for(int t=0;t<reachables.length&&this.Players[pindex].Undergrounds>0;t++){
+			if(!this.Players[pindex].IsMisterX()){
+				boolean takenByOtherInvestigator=false;
+				for(int p=0;p<this.Players.length&&!takenByOtherInvestigator;p++){
+					if(this.Players[p].IsMisterX())
+						continue;
+					if(this.Players[p].NodeID==reachables[t].GetID()){
+						takenByOtherInvestigator=true;
+					}
+				}
+				if(takenByOtherInvestigator)
+					continue;
+			}
+			return true;
+		}
+		return false;
 	}
 	
 	private void highlightTaxiNodes(){
@@ -333,6 +413,11 @@ public class Board{
 		
 		if(this.investigatorsWon){
 			g.drawString("Mr. X has been captured!",915,500);
+			this.Players[5].drawMoves(g, 915, GraphicalUserInterface.YBUFFER);
+		}
+		if(this.mrXWon){
+			g.drawString("Mr. X has blown up the city!", 915, 500);
+			this.Players[5].drawMoves(g, 915, GraphicalUserInterface.YBUFFER);
 		}
 	}
 }
