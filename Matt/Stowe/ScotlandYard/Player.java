@@ -6,10 +6,10 @@ import java.util.Vector;
 public class Player{
 	private static final Color[] COLORS=new Color[]{Color.orange,Color.green,new Color(64,64,255),new Color(128,64,28),Color.magenta,Color.white};
 	private static final int[] REVEAL_TURNS=new int[]{3,8,13,18,24};
-	private boolean isRevealed(){
+	private boolean isRevealed(int turnIndex){
 		boolean xIsRevealed=false;
 		for(int xrv=0;xrv<REVEAL_TURNS.length&&!xIsRevealed;xrv++){
-			if(REVEAL_TURNS[xrv]==this.moveIndex){
+			if(REVEAL_TURNS[xrv]==turnIndex){
 				xIsRevealed=true;
 			}
 		}
@@ -77,7 +77,7 @@ public class Player{
 		this.moveNodeIDs[this.moveIndex]=nodeid+1;
 		this.moveIndex++;
 		this.NodeID=nodeid;
-		if(this.isRevealed()){
+		if(this.isRevealed(this.moveIndex)){
 			this.lastSeen=nodeid+1;
 			this.usedBlackTicketSinceReveal=false;
 		}
@@ -89,7 +89,7 @@ public class Player{
 		this.moveNodeIDs[this.moveIndex]=nodeid+1;
 		this.moveIndex++;
 		this.NodeID=nodeid;
-		if(this.isRevealed()){
+		if(this.isRevealed(this.moveIndex)){
 			this.lastSeen=nodeid+1;
 			this.usedBlackTicketSinceReveal=false;
 		}
@@ -101,7 +101,7 @@ public class Player{
 		this.moveNodeIDs[this.moveIndex]=nodeid+1;
 		this.moveIndex++;
 		this.NodeID=nodeid;
-		if(this.isRevealed()){
+		if(this.isRevealed(this.moveIndex)){
 			this.lastSeen=nodeid+1;
 			this.usedBlackTicketSinceReveal=false;
 		}
@@ -113,7 +113,7 @@ public class Player{
 		this.moveNodeIDs[this.moveIndex]=nodeid+1;
 		this.moveIndex++;
 		this.NodeID=nodeid;
-		if(this.isRevealed()){
+		if(this.isRevealed(this.moveIndex)){
 			this.lastSeen=nodeid+1;
 			this.usedBlackTicketSinceReveal=false;
 		}
@@ -242,7 +242,11 @@ public class Player{
 		}
 
 		SYNode chosennode=null;
-		if(this.BlackTickets>0&&bestferrypoints>bestugpoints&&bestferrypoints>bestbuspoints&&bestferrypoints>besttaxipoints){
+		boolean hasBlackTickets = this.BlackTickets > 0;
+		boolean revealedAtLeastOnce = this.moveIndex > 3;
+		boolean aboutToReveal = this.isRevealed(this.moveIndex + 1);
+		boolean canConsiderBlackTickets = hasBlackTickets && revealedAtLeastOnce && !this.usedBlackTicketSinceReveal && !aboutToReveal;
+		if(hasBlackTickets&&bestferrypoints>bestugpoints&&bestferrypoints>bestbuspoints&&bestferrypoints>besttaxipoints){
 			chosennode=availableferries[bestferrynodeindexes.elementAt((int)(Math.random()*bestferrynodeindexes.size()))];
 			if(this.nodeIsOneAwayFromInvestigator(b, chosennode)&&this.DoubleMoves>0&&!this.doubleMoving){
 				this.doubleMoving=true;
@@ -255,7 +259,8 @@ public class Player{
 				this.doubleMoving=true;
 				b.MouseClicked(855, minY+140, true);
 			}
-			if(this.BlackTickets>0&&this.moveIndex>3&&!this.usedBlackTicketSinceReveal
+			boolean revealingAfterDoubleMove = (this.doubleMoving && this.isRevealed(this.moveIndex + 2));
+			if(canConsiderBlackTickets && !revealingAfterDoubleMove
 			&&((Math.random()<.5)
 				||(bestugpoints<0&&!(!wasDoubleMove&&this.doubleMoving)))){
 				b.MouseClicked(855, minY+115, true);
@@ -268,7 +273,8 @@ public class Player{
 				this.doubleMoving=true;
 				b.MouseClicked(855, minY+140, true);
 			}
-			if(this.BlackTickets>0&&this.moveIndex>3&&!this.usedBlackTicketSinceReveal
+			boolean revealingAfterDoubleMove = (this.doubleMoving && this.isRevealed(this.moveIndex + 2));
+			if(canConsiderBlackTickets && !revealingAfterDoubleMove
 			&&((Math.random()<.5&&availableundergrounds.length>0)
 				||(bestbuspoints<0&&!(!wasDoubleMove&&this.doubleMoving)))){
 				b.MouseClicked(855, minY+115, true);
@@ -281,7 +287,8 @@ public class Player{
 				this.doubleMoving=true;
 				b.MouseClicked(855, minY+140, true);
 			}
-			if(this.BlackTickets>0&&this.moveIndex>3&&!this.usedBlackTicketSinceReveal
+			boolean revealingAfterDoubleMove = (this.doubleMoving && this.isRevealed(this.moveIndex + 2));
+			if(canConsiderBlackTickets && !revealingAfterDoubleMove
 			&&((Math.random()<.5&&availableundergrounds.length>0)
 				||(besttaxipoints<0&&availablebuses.length>0&&!(!wasDoubleMove&&this.doubleMoving)))){
 				b.MouseClicked(855, minY+115, true);
@@ -299,7 +306,7 @@ public class Player{
 		this.drawInvestigator(g,x,y);
 		if(this.IsMisterX()){
 			this.drawMisterX(g,x,y);
-			if((this.ID==whoseTurn&&this.IsHuman())||this.isRevealed()){
+			if((this.ID==whoseTurn&&this.IsHuman())||this.isRevealed(this.moveIndex)){
 				this.drawPawn(g,x,y);
 			}
 		}
